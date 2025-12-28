@@ -11,7 +11,7 @@ import (
 	"strings"
 
 	"github.com/Avalanche-io/gotio/opentime"
-	"github.com/Avalanche-io/gotio/opentimelineio"
+	"github.com/Avalanche-io/gotio"
 )
 
 // Decoder reads FCPX XML and decodes it into an OTIO Timeline.
@@ -25,7 +25,7 @@ func NewDecoder(r io.Reader) *Decoder {
 }
 
 // Decode reads the FCPX XML document and converts it to an OTIO Timeline.
-func (d *Decoder) Decode() (*opentimelineio.Timeline, error) {
+func (d *Decoder) Decode() (*gotio.Timeline, error) {
 	var fcpxml FCPXML
 	if err := xml.NewDecoder(d.r).Decode(&fcpxml); err != nil {
 		return nil, fmt.Errorf("failed to parse FCPX XML: %w", err)
@@ -36,7 +36,7 @@ func (d *Decoder) Decode() (*opentimelineio.Timeline, error) {
 }
 
 // convertToTimeline converts FCPXML to an OTIO Timeline.
-func (d *Decoder) convertToTimeline(fcpxml *FCPXML) (*opentimelineio.Timeline, error) {
+func (d *Decoder) convertToTimeline(fcpxml *FCPXML) (*gotio.Timeline, error) {
 	// Find the first project (either at root or in library/event)
 	var project *Project
 	if fcpxml.Project != nil {
@@ -61,7 +61,7 @@ func (d *Decoder) convertToTimeline(fcpxml *FCPXML) (*opentimelineio.Timeline, e
 	}
 
 	// Create timeline
-	timeline := opentimelineio.NewTimeline(project.Name, nil, nil)
+	timeline := gotio.NewTimeline(project.Name, nil, nil)
 
 	// Convert sequence to tracks
 	if project.Sequence != nil {
@@ -74,14 +74,14 @@ func (d *Decoder) convertToTimeline(fcpxml *FCPXML) (*opentimelineio.Timeline, e
 }
 
 // convertSequenceToTracks converts a FCPX Sequence to OTIO tracks.
-func (d *Decoder) convertSequenceToTracks(seq *Sequence, timeline *opentimelineio.Timeline) error {
+func (d *Decoder) convertSequenceToTracks(seq *Sequence, timeline *gotio.Timeline) error {
 	if seq.Spine == nil {
 		return nil
 	}
 
 	// FCPX uses a single spine, which we'll convert to separate video and audio tracks
-	videoTrack := opentimelineio.NewTrack("Video 1", nil, opentimelineio.TrackKindVideo, nil, nil)
-	audioTrack := opentimelineio.NewTrack("Audio 1", nil, opentimelineio.TrackKindAudio, nil, nil)
+	videoTrack := gotio.NewTrack("Video 1", nil, gotio.TrackKindVideo, nil, nil)
+	audioTrack := gotio.NewTrack("Audio 1", nil, gotio.TrackKindAudio, nil, nil)
 
 	// Process spine items
 	for _, item := range seq.Spine.Items {
@@ -131,7 +131,7 @@ func (d *Decoder) convertSequenceToTracks(seq *Sequence, timeline *opentimelinei
 }
 
 // convertClip converts a FCPX Clip to OTIO clip(s).
-func (d *Decoder) convertClip(clip *Clip, videoTrack, audioTrack *opentimelineio.Track) error {
+func (d *Decoder) convertClip(clip *Clip, videoTrack, audioTrack *gotio.Track) error {
 	// Parse duration
 	duration, err := d.parseRationalTime(clip.Duration)
 	if err != nil {
@@ -151,7 +151,7 @@ func (d *Decoder) convertClip(clip *Clip, videoTrack, audioTrack *opentimelineio
 	sourceRange := opentime.NewTimeRange(start, duration)
 
 	// Convert markers
-	var markers []*opentimelineio.Marker
+	var markers []*gotio.Marker
 	for _, m := range clip.Markers {
 		marker, err := d.convertMarker(m)
 		if err != nil {
@@ -162,15 +162,15 @@ func (d *Decoder) convertClip(clip *Clip, videoTrack, audioTrack *opentimelineio
 
 	// Create video clip if present
 	if clip.Video != nil || clip.Ref != "" {
-		ref := opentimelineio.NewExternalReference("", "", nil, nil)
-		otioClip := opentimelineio.NewClip(clip.Name, ref, &sourceRange, nil, nil, markers, "", nil)
+		ref := gotio.NewExternalReference("", "", nil, nil)
+		otioClip := gotio.NewClip(clip.Name, ref, &sourceRange, nil, nil, markers, "", nil)
 		videoTrack.AppendChild(otioClip)
 	}
 
 	// Create audio clip if present
 	if clip.Audio != nil || clip.AudioDuration != "" {
-		ref := opentimelineio.NewExternalReference("", "", nil, nil)
-		otioClip := opentimelineio.NewClip(clip.Name, ref, &sourceRange, nil, nil, markers, "", nil)
+		ref := gotio.NewExternalReference("", "", nil, nil)
+		otioClip := gotio.NewClip(clip.Name, ref, &sourceRange, nil, nil, markers, "", nil)
 		audioTrack.AppendChild(otioClip)
 	}
 
@@ -178,7 +178,7 @@ func (d *Decoder) convertClip(clip *Clip, videoTrack, audioTrack *opentimelineio
 }
 
 // convertVideo converts a FCPX Video element to OTIO clip.
-func (d *Decoder) convertVideo(video *Video, videoTrack *opentimelineio.Track) error {
+func (d *Decoder) convertVideo(video *Video, videoTrack *gotio.Track) error {
 	duration, err := d.parseRationalTime(video.Duration)
 	if err != nil {
 		return fmt.Errorf("failed to parse video duration: %w", err)
@@ -195,7 +195,7 @@ func (d *Decoder) convertVideo(video *Video, videoTrack *opentimelineio.Track) e
 	sourceRange := opentime.NewTimeRange(start, duration)
 
 	// Convert markers
-	var markers []*opentimelineio.Marker
+	var markers []*gotio.Marker
 	for _, m := range video.Markers {
 		marker, err := d.convertMarker(m)
 		if err != nil {
@@ -204,15 +204,15 @@ func (d *Decoder) convertVideo(video *Video, videoTrack *opentimelineio.Track) e
 		markers = append(markers, marker)
 	}
 
-	ref := opentimelineio.NewExternalReference("", "", nil, nil)
-	otioClip := opentimelineio.NewClip(video.Name, ref, &sourceRange, nil, nil, markers, "", nil)
+	ref := gotio.NewExternalReference("", "", nil, nil)
+	otioClip := gotio.NewClip(video.Name, ref, &sourceRange, nil, nil, markers, "", nil)
 	videoTrack.AppendChild(otioClip)
 
 	return nil
 }
 
 // convertAudio converts a FCPX Audio element to OTIO clip.
-func (d *Decoder) convertAudio(audio *Audio, audioTrack *opentimelineio.Track) error {
+func (d *Decoder) convertAudio(audio *Audio, audioTrack *gotio.Track) error {
 	duration, err := d.parseRationalTime(audio.Duration)
 	if err != nil {
 		return fmt.Errorf("failed to parse audio duration: %w", err)
@@ -228,15 +228,15 @@ func (d *Decoder) convertAudio(audio *Audio, audioTrack *opentimelineio.Track) e
 
 	sourceRange := opentime.NewTimeRange(start, duration)
 
-	ref := opentimelineio.NewExternalReference("", "", nil, nil)
-	otioClip := opentimelineio.NewClip(audio.Name, ref, &sourceRange, nil, nil, nil, "", nil)
+	ref := gotio.NewExternalReference("", "", nil, nil)
+	otioClip := gotio.NewClip(audio.Name, ref, &sourceRange, nil, nil, nil, "", nil)
 	audioTrack.AppendChild(otioClip)
 
 	return nil
 }
 
 // convertGap converts a FCPX Gap to OTIO gap(s).
-func (d *Decoder) convertGap(gap *Gap, videoTrack, audioTrack *opentimelineio.Track) error {
+func (d *Decoder) convertGap(gap *Gap, videoTrack, audioTrack *gotio.Track) error {
 	duration, err := d.parseRationalTime(gap.Duration)
 	if err != nil {
 		return fmt.Errorf("failed to parse gap duration: %w", err)
@@ -245,8 +245,8 @@ func (d *Decoder) convertGap(gap *Gap, videoTrack, audioTrack *opentimelineio.Tr
 	sourceRange := opentime.NewTimeRange(opentime.RationalTime{}, duration)
 
 	// Add gap to both tracks
-	videoGap := opentimelineio.NewGap(gap.Name, &sourceRange, nil, nil, nil, nil)
-	audioGap := opentimelineio.NewGap(gap.Name, &sourceRange, nil, nil, nil, nil)
+	videoGap := gotio.NewGap(gap.Name, &sourceRange, nil, nil, nil, nil)
+	audioGap := gotio.NewGap(gap.Name, &sourceRange, nil, nil, nil, nil)
 
 	videoTrack.AppendChild(videoGap)
 	audioTrack.AppendChild(audioGap)
@@ -255,7 +255,7 @@ func (d *Decoder) convertGap(gap *Gap, videoTrack, audioTrack *opentimelineio.Tr
 }
 
 // convertMarker converts a FCPX Marker to OTIO Marker.
-func (d *Decoder) convertMarker(marker *Marker) (*opentimelineio.Marker, error) {
+func (d *Decoder) convertMarker(marker *Marker) (*gotio.Marker, error) {
 	start, err := d.parseRationalTime(marker.Start)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse marker start: %w", err)
@@ -275,11 +275,11 @@ func (d *Decoder) convertMarker(marker *Marker) (*opentimelineio.Marker, error) 
 	name := marker.Value
 	comment := marker.Note
 
-	return opentimelineio.NewMarker(name, markedRange, opentimelineio.MarkerColorGreen, comment, nil), nil
+	return gotio.NewMarker(name, markedRange, gotio.MarkerColorGreen, comment, nil), nil
 }
 
 // convertRefClip converts a FCPX RefClip (compound clip) to OTIO Stack.
-func (d *Decoder) convertRefClip(refClip *RefClip, videoTrack, audioTrack *opentimelineio.Track) error {
+func (d *Decoder) convertRefClip(refClip *RefClip, videoTrack, audioTrack *gotio.Track) error {
 	// Parse duration
 	duration, err := d.parseRationalTime(refClip.Duration)
 	if err != nil {
@@ -299,7 +299,7 @@ func (d *Decoder) convertRefClip(refClip *RefClip, videoTrack, audioTrack *opent
 	sourceRange := opentime.NewTimeRange(start, duration)
 
 	// Convert markers
-	var markers []*opentimelineio.Marker
+	var markers []*gotio.Marker
 	for _, m := range refClip.Markers {
 		marker, err := d.convertMarker(m)
 		if err != nil {
@@ -310,7 +310,7 @@ func (d *Decoder) convertRefClip(refClip *RefClip, videoTrack, audioTrack *opent
 
 	// Create a Stack to represent the compound clip
 	// In Python adapter, ref-clips become nested Stacks
-	stack := opentimelineio.NewStack(refClip.Name, &sourceRange, nil, nil, markers, nil)
+	stack := gotio.NewStack(refClip.Name, &sourceRange, nil, nil, markers, nil)
 
 	// Add metadata for compound clip reference
 	metadata := map[string]interface{}{

@@ -9,7 +9,7 @@ import (
 	"io"
 
 	"github.com/Avalanche-io/gotio/opentime"
-	"github.com/Avalanche-io/gotio/opentimelineio"
+	"github.com/Avalanche-io/gotio"
 )
 
 // Encoder writes an OTIO Timeline as FCPX XML.
@@ -23,7 +23,7 @@ func NewEncoder(w io.Writer) *Encoder {
 }
 
 // Encode converts an OTIO Timeline to FCPX XML and writes it to the output.
-func (e *Encoder) Encode(timeline *opentimelineio.Timeline) error {
+func (e *Encoder) Encode(timeline *gotio.Timeline) error {
 	// Convert OTIO Timeline to FCPXML
 	fcpxml, err := e.convertFromTimeline(timeline)
 	if err != nil {
@@ -51,7 +51,7 @@ func (e *Encoder) Encode(timeline *opentimelineio.Timeline) error {
 }
 
 // convertFromTimeline converts an OTIO Timeline to FCPXML.
-func (e *Encoder) convertFromTimeline(timeline *opentimelineio.Timeline) (*FCPXML, error) {
+func (e *Encoder) convertFromTimeline(timeline *gotio.Timeline) (*FCPXML, error) {
 	// Create project
 	project := &Project{
 		Name: timeline.Name(),
@@ -74,7 +74,7 @@ func (e *Encoder) convertFromTimeline(timeline *opentimelineio.Timeline) (*FCPXM
 }
 
 // convertTracksToSequence converts OTIO tracks to a FCPX Sequence.
-func (e *Encoder) convertTracksToSequence(stack *opentimelineio.Stack) (*Sequence, error) {
+func (e *Encoder) convertTracksToSequence(stack *gotio.Stack) (*Sequence, error) {
 	if stack == nil {
 		return nil, fmt.Errorf("no tracks in timeline")
 	}
@@ -85,14 +85,14 @@ func (e *Encoder) convertTracksToSequence(stack *opentimelineio.Stack) (*Sequenc
 	}
 
 	// Get video and audio tracks
-	var videoItems []opentimelineio.Composable
-	var audioItems []opentimelineio.Composable
+	var videoItems []gotio.Composable
+	var audioItems []gotio.Composable
 
 	for _, child := range stack.Children() {
-		if track, ok := child.(*opentimelineio.Track); ok {
-			if track.Kind() == opentimelineio.TrackKindVideo {
+		if track, ok := child.(*gotio.Track); ok {
+			if track.Kind() == gotio.TrackKindVideo {
 				videoItems = append(videoItems, track.Children()...)
-			} else if track.Kind() == opentimelineio.TrackKindAudio {
+			} else if track.Kind() == gotio.TrackKindAudio {
 				audioItems = append(audioItems, track.Children()...)
 			}
 		}
@@ -111,7 +111,7 @@ func (e *Encoder) convertTracksToSequence(stack *opentimelineio.Stack) (*Sequenc
 		// Add corresponding audio if available
 		if i < len(audioItems) {
 			audioItem := audioItems[i]
-			if audioClip, ok := audioItem.(*opentimelineio.Clip); ok {
+			if audioClip, ok := audioItem.(*gotio.Clip); ok {
 				// Add audio to the clip
 				if clip, ok := fcpItem.(*Clip); ok {
 					audio, err := e.convertClipToAudio(audioClip)
@@ -135,13 +135,13 @@ func (e *Encoder) convertTracksToSequence(stack *opentimelineio.Stack) (*Sequenc
 }
 
 // convertItem converts an OTIO Composable to a FCPX Item.
-func (e *Encoder) convertItem(item opentimelineio.Composable, isVideo bool) (Item, error) {
+func (e *Encoder) convertItem(item gotio.Composable, isVideo bool) (Item, error) {
 	switch v := item.(type) {
-	case *opentimelineio.Clip:
+	case *gotio.Clip:
 		return e.convertClipToFCPX(v, isVideo)
-	case *opentimelineio.Gap:
+	case *gotio.Gap:
 		return e.convertGapToFCPX(v)
-	case *opentimelineio.Stack:
+	case *gotio.Stack:
 		return e.convertStackToRefClip(v)
 	default:
 		return nil, fmt.Errorf("unsupported item type: %T", item)
@@ -149,7 +149,7 @@ func (e *Encoder) convertItem(item opentimelineio.Composable, isVideo bool) (Ite
 }
 
 // convertClipToFCPX converts an OTIO Clip to a FCPX Clip or Video.
-func (e *Encoder) convertClipToFCPX(clip *opentimelineio.Clip, isVideo bool) (Item, error) {
+func (e *Encoder) convertClipToFCPX(clip *gotio.Clip, isVideo bool) (Item, error) {
 	// Get duration
 	duration, err := clip.Duration()
 	if err != nil {
@@ -190,7 +190,7 @@ func (e *Encoder) convertClipToFCPX(clip *opentimelineio.Clip, isVideo bool) (It
 }
 
 // convertClipToAudio converts an OTIO Clip to a FCPX Audio element.
-func (e *Encoder) convertClipToAudio(clip *opentimelineio.Clip) (*Audio, error) {
+func (e *Encoder) convertClipToAudio(clip *gotio.Clip) (*Audio, error) {
 	duration, err := clip.Duration()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get clip duration: %w", err)
@@ -211,7 +211,7 @@ func (e *Encoder) convertClipToAudio(clip *opentimelineio.Clip) (*Audio, error) 
 }
 
 // convertGapToFCPX converts an OTIO Gap to a FCPX Gap.
-func (e *Encoder) convertGapToFCPX(gap *opentimelineio.Gap) (Item, error) {
+func (e *Encoder) convertGapToFCPX(gap *gotio.Gap) (Item, error) {
 	duration, err := gap.Duration()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get gap duration: %w", err)
@@ -226,7 +226,7 @@ func (e *Encoder) convertGapToFCPX(gap *opentimelineio.Gap) (Item, error) {
 }
 
 // convertMarkerToFCPX converts an OTIO Marker to a FCPX Marker.
-func (e *Encoder) convertMarkerToFCPX(marker *opentimelineio.Marker) *Marker {
+func (e *Encoder) convertMarkerToFCPX(marker *gotio.Marker) *Marker {
 	markedRange := marker.MarkedRange()
 
 	return &Marker{
@@ -238,7 +238,7 @@ func (e *Encoder) convertMarkerToFCPX(marker *opentimelineio.Marker) *Marker {
 }
 
 // convertStackToRefClip converts an OTIO Stack (compound clip) to a FCPX RefClip.
-func (e *Encoder) convertStackToRefClip(stack *opentimelineio.Stack) (Item, error) {
+func (e *Encoder) convertStackToRefClip(stack *gotio.Stack) (Item, error) {
 	duration, err := stack.Duration()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get stack duration: %w", err)

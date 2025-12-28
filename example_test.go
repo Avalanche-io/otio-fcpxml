@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/Avalanche-io/gotio/opentime"
-	"github.com/Avalanche-io/gotio/opentimelineio"
-	"github.com/Avalanche-io/gotio/otio-fcpxml"
+	"github.com/Avalanche-io/gotio"
+	"github.com/Avalanche-io/otio-fcpxml"
 )
 
 func ExampleDecoder() {
@@ -43,25 +43,25 @@ func ExampleDecoder() {
 
 func ExampleEncoder() {
 	// Create a simple timeline
-	timeline := opentimelineio.NewTimeline("Example Timeline", nil, nil)
+	timeline := gotio.NewTimeline("Example Timeline", nil, nil)
 
 	// Create a video track
-	videoTrack := opentimelineio.NewTrack("Video 1", nil, opentimelineio.TrackKindVideo, nil, nil)
+	videoTrack := gotio.NewTrack("Video 1", nil, gotio.TrackKindVideo, nil, nil)
 
 	// Add some clips with source ranges (required for encoding)
-	ref1 := opentimelineio.NewExternalReference("", "", nil, nil)
+	ref1 := gotio.NewExternalReference("", "", nil, nil)
 	sourceRange1 := opentime.NewTimeRange(
 		opentime.NewRationalTime(0, 24),
 		opentime.NewRationalTime(1200, 24),
 	)
-	clip1 := opentimelineio.NewClip("Clip 1", ref1, &sourceRange1, nil, nil, nil, "", nil)
+	clip1 := gotio.NewClip("Clip 1", ref1, &sourceRange1, nil, nil, nil, "", nil)
 
-	ref2 := opentimelineio.NewExternalReference("", "", nil, nil)
+	ref2 := gotio.NewExternalReference("", "", nil, nil)
 	sourceRange2 := opentime.NewTimeRange(
 		opentime.NewRationalTime(0, 24),
 		opentime.NewRationalTime(1800, 24),
 	)
-	clip2 := opentimelineio.NewClip("Clip 2", ref2, &sourceRange2, nil, nil, nil, "", nil)
+	clip2 := gotio.NewClip("Clip 2", ref2, &sourceRange2, nil, nil, nil, "", nil)
 
 	videoTrack.AppendChild(clip1)
 	videoTrack.AppendChild(clip2)
